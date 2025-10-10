@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 typeForConfig = (chartType === 'donut') ? 'doughnut' : 'pie';
                 const cut = document.getElementById('donut-cutout').value + '%';
                 options.cutout = (chartType === 'donut') ? cut : '0%';
-                const radiusPct = parseInt(document.getElementById('pie-radius').value || '90', 10);
+                const radiusPct = parseInt(document.getElementById('pie-radius').value || '65', 10);
                 options.radius = radiusPct + '%';
                 options.indexAxis = 'x';
                 // 强制隐藏所有 XY 坐标轴与网格
@@ -269,11 +269,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     x: { display: false, grid: { display: false }, ticks: { display: false } },
                     y: { display: false, grid: { display: false }, ticks: { display: false } }
                 };
-                options.plugins.legend = { display: true };
+                // 隐藏图例
+                options.plugins.legend = { display: false };
                 
-                // 添加自定义插件来显示饼图数据标签
-                options.plugins.pieDataLabels = {
-                    id: 'pieDataLabels',
+                // 添加自定义插件来显示饼图外部标签
+                options.plugins.pieExternalLabels = {
+                    id: 'pieExternalLabels',
                     afterDatasetsDraw(chart) {
                         const ctx = chart.ctx;
                         const chartData = chart.data;
@@ -283,122 +284,71 @@ document.addEventListener('DOMContentLoaded', function () {
                         
                         const total = chartData.datasets[0].data.reduce((sum, value) => sum + value, 0);
                         
-                        // 辅助函数：检查文字是否完全在扇形区域内
-                        function isTextInSector(textX, textY, textW, textH, centerX, centerY, startAng, endAng, innerR, outerR) {
-                            // 检查文字四个角点是否都在扇形内
-                            const corners = [
-                                [textX - textW/2, textY - textH/2], // 左上
-                                [textX + textW/2, textY - textH/2], // 右上
-                                [textX - textW/2, textY + textH/2], // 左下
-                                [textX + textW/2, textY + textH/2]  // 右下
-                            ];
-                            
-                            return corners.every(([px, py]) => {
-                                const dx = px - centerX;
-                                const dy = py - centerY;
-                                const distance = Math.sqrt(dx * dx + dy * dy);
-                                let angle = Math.atan2(dy, dx);
-                                
-                                // 标准化角度到0-2π范围
-                                if (angle < 0) angle += 2 * Math.PI;
-                                
-                                // 检查是否在半径范围内
-                                if (distance < innerR || distance > outerR) return false;
-                                
-                                // 检查是否在角度范围内
-                                let normalizedStart = startAng;
-                                let normalizedEnd = endAng;
-                                if (normalizedStart < 0) normalizedStart += 2 * Math.PI;
-                                if (normalizedEnd < 0) normalizedEnd += 2 * Math.PI;
-                                
-                                if (normalizedStart <= normalizedEnd) {
-                                    return angle >= normalizedStart && angle <= normalizedEnd;
-                                } else {
-                                    // 跨越0度的情况
-                                    return angle >= normalizedStart || angle <= normalizedEnd;
-                                }
-                            });
-                        }
+                        // 获取当前主题的文字颜色
+                        const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+                        const textColor = isDarkTheme ? '#e0e0e0' : '#333';
+                        const lineColor = isDarkTheme ? '#888' : '#666';
                         
                         chartData.datasets[0].data.forEach((value, index) => {
                             const arc = meta.data[index];
                             if (!arc) return;
                             
-                            const { x, y, startAngle, endAngle, outerRadius, innerRadius } = arc;
+                            const { x, y, startAngle, endAngle, outerRadius } = arc;
                             
-                            // 计算字体大小（根据图表大小和扇形面积自适应）
-                            const percentage = (value / total) * 100;
+                            // 计算百分比
+                            const percentage = ((value / total) * 100).toFixed(1);
                             
-                            // 如果是很小的扇形，不显示标签
-                            if (percentage < 2) return;
+                            // 如果扇形太小，不显示标签
+                            if (percentage < 1) return;
                             
-                            // 基于图表半径和扇形面积的自适应字体大小
-                            const chartSize = outerRadius; // 图表的实际大小
-                            const arcAngle = endAngle - startAngle; // 扇形角度
-                            const sectorArea = (arcAngle / (2 * Math.PI)) * Math.PI * Math.pow(outerRadius, 2); // 扇形面积
+                            // 计算中间角度
+                            const midAngle = (startAngle + endAngle) / 2;
                             
-                            // 综合考虑图表大小、扇形面积和百分比的字体大小算法
-                            let fontSize = Math.sqrt(sectorArea) * 0.15; // 基于扇形面积
-                            fontSize = Math.max(chartSize * 0.03, Math.min(chartSize * 0.12, fontSize)); // 基于图表大小限制范围
-                            fontSize = Math.max(8, Math.min(24, fontSize)); // 绝对最小最大限制
+                            // 计算引导线的起点（在饼图边缘）
+                            const lineStartRadius = outerRadius;
+                            const lineStartX = x + Math.cos(midAngle) * lineStartRadius;
+                            const lineStartY = y + Math.sin(midAngle) * lineStartRadius;
                             
-                            // 确保文字能在扇形内完整显示
-                            const availableRadius = (outerRadius - innerRadius) * 0.7; // 可用半径的70%
-                            const maxFontSizeByRadius = availableRadius * 0.4;
-                            fontSize = Math.min(fontSize, maxFontSizeByRadius);
+                            // 计算引导线的中间点（向外延伸）
+                            const lineMidRadius = outerRadius + 20;
+                            const lineMidX = x + Math.cos(midAngle) * lineMidRadius;
+                            const lineMidY = y + Math.sin(midAngle) * lineMidRadius;
                             
+                            // 确定标签位置（左侧或右侧）
+                            const isLeftSide = Math.cos(midAngle) < 0;
+                            
+                            // 计算水平线的终点
+                            const horizontalLineLength = 40;
+                            const lineEndX = lineMidX + (isLeftSide ? -horizontalLineLength : horizontalLineLength);
+                            const lineEndY = lineMidY;
+                            
+                            // 绘制引导线
                             ctx.save();
-                            ctx.font = `bold ${Math.round(fontSize)}px Arial`;
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
+                            ctx.strokeStyle = lineColor;
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.moveTo(lineStartX, lineStartY);
+                            ctx.lineTo(lineMidX, lineMidY);
+                            ctx.lineTo(lineEndX, lineEndY);
+                            ctx.stroke();
                             
                             // 获取标签文本
                             const labelText = chartData.labels[index] || `项目 ${index + 1}`;
                             
-                            // 计算文字尺寸
-                            const textMetrics = ctx.measureText(labelText);
-                            const textWidth = textMetrics.width;
-                            const textHeight = fontSize; // 近似文字高度
+                            // 绘制标签文本
+                            ctx.textAlign = isLeftSide ? 'right' : 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = textColor;
                             
-                            // 智能标签位置计算，确保不溢出扇形区域
-                            const midAngle = (startAngle + endAngle) / 2;
-                            let bestX, bestY;
-                            let bestRadius = (outerRadius + innerRadius) / 2; // 默认中心位置
+                            // 标签名称（大字）
+                            ctx.font = 'bold 16px Arial';
+                            const textX = lineEndX + (isLeftSide ? -8 : 8);
+                            ctx.fillText(labelText, textX, lineEndY - 10);
                             
-                            // 尝试不同半径距离，找到最适合的位置
-                            const radiusSteps = [0.5, 0.3, 0.7, 0.2, 0.8]; // 尝试不同的半径比例
-                            let foundValidPosition = false;
+                            // 百分比（小字）
+                            ctx.font = '14px Arial';
+                            ctx.fillText(`${percentage}%`, textX, lineEndY + 10);
                             
-                            for (const radiusRatio of radiusSteps) {
-                                const testRadius = innerRadius + (outerRadius - innerRadius) * radiusRatio;
-                                const testX = x + Math.cos(midAngle) * testRadius;
-                                const testY = y + Math.sin(midAngle) * testRadius;
-                                
-                                // 检查文字边界是否在扇形内
-                                if (isTextInSector(testX, testY, textWidth, textHeight, x, y, startAngle, endAngle, innerRadius, outerRadius)) {
-                                    bestX = testX;
-                                    bestY = testY;
-                                    foundValidPosition = true;
-                                    break;
-                                }
-                            }
-                            
-                            // 如果没有找到合适位置，使用默认位置但可能需要缩小字体
-                            if (!foundValidPosition) {
-                                bestX = x + Math.cos(midAngle) * bestRadius;
-                                bestY = y + Math.sin(midAngle) * bestRadius;
-                                
-                                // 对于很小的扇形，进一步缩小字体
-                                if (arcAngle < 0.5) { // 小于约30度的扇形
-                                    fontSize *= 0.8;
-                                    ctx.font = `bold ${Math.round(fontSize)}px Arial`;
-                                }
-                            }
-                            
-                            // 使用主题适配的文字颜色
-                            const pieTextColor = isDarkTheme ? '#e0e0e0' : '#333';
-                            ctx.fillStyle = pieTextColor;
-                            ctx.fillText(labelText, bestX, bestY);
                             ctx.restore();
                         });
                     }
@@ -617,8 +567,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (options.plugins && options.plugins.radarAxisLabels) {
             plugins.push(options.plugins.radarAxisLabels);
         }
-        if (options.plugins && options.plugins.pieDataLabels) {
-            plugins.push(options.plugins.pieDataLabels);
+        if (options.plugins && options.plugins.pieExternalLabels) {
+            plugins.push(options.plugins.pieExternalLabels);
         }
         
         myChart = new Chart(currentCtx, {
