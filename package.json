@@ -1,0 +1,36 @@
+{
+  "name": "chart-studio",
+  "version": "0.1.0",
+  "description": "一个功能强大、设计精美的在线图表生成工具。支持14种图表类型，提供丰富的自定义选项和优雅的交互效果。",
+  "main": "dist/script.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist",
+    "start": "npm run build && start index.html"
+  },
+  "keywords": [
+    "chart",
+    "visualization",
+    "chartjs",
+    "d3",
+    "typescript",
+    "data-visualization"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/chart-studio"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "d3": "^7.8.5"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.9.3"
+  }
+}

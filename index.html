@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1200, initial-scale=0.32, minimum-scale=0.15, maximum-scale=3.0, user-scalable=yes">
-    <title>图表生成</title>
+    <meta name="viewport" content="width=1092, initial-scale=0.352, minimum-scale=0.165, maximum-scale=3.3, user-scalable=yes">
+    <title>图表生成器 - TypeScript 版本 3.0</title>
     
     <!-- Favicon for different devices -->
     <link rel="icon" type="image/png" sizes="32x32" href="4496.png">
@@ -19,19 +19,25 @@
     <link rel="icon" sizes="512x512" href="4496.png">
     
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <!-- Chart.js 4.4.1 - 确保版本号一致 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <!-- D3.js 7.8.5 - 确保版本号一致 -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="sidebar">
-            <h2>图表设置</h2>
+            <div class="sidebar-header">
+                <h2>图表设置</h2>
+                <button id="reset-dashboard" class="inline-btn subtle">重置</button>
+            </div>
 
-            <div class="control-group">
+            <div class="control-group compact-gap">
                 <label for="chart-type">图表类型</label>
                 <select id="chart-type">
                     <option value="bar">柱状图（分组）</option>
                     <option value="bar-stacked">柱状图（堆叠）</option>
+                    <option value="bar-horizontal">条形图（水平）</option>
                     <option value="line">折线图</option>
                     <option value="area">面积图</option>
                     <option value="area-stacked">堆积面积图</option>
@@ -40,12 +46,13 @@
                     <option value="histogram">直方图</option>
                     <option value="radar">雷达图 / 蜘蛛图</option>
                     <option value="bar-line">柱状折线混合图</option>
+                    <option value="bubble">气泡图（Bubble Chart）</option>
                     <option value="streamgraph">流图（Streamgraph）</option>
                     <option value="treemap">矩形树图（Treemap）</option>
                 </select>
             </div>
 
-            <div class="control-group">
+            <div class="control-group compact-gap">
                 <label>图表方向</label>
                 <div class="toggle-switch">
                     <button id="orientation-vertical" class="active">竖向</button>
@@ -59,22 +66,22 @@
             </div>
 
             <div id="single-series-wrap" class="control-group hidden">
-                <label for="single-series-select">单系列选择（用于饼/环/直方图/树图）</label>
+                <label for="single-series-select">单系列选择（用于饼/环/直方/树图）</label>
                 <select id="single-series-select"></select>
             </div>
 
             <div id="donut-wrap" class="control-group hidden">
-                <label for="donut-cutout">环形内径比例（%） <span id="donut-cutout-value">50</span></label>
+                <label for="donut-cutout">环形内径比例（%）<span id="donut-cutout-value">50</span></label>
                 <input type="range" id="donut-cutout" min="0" max="80" value="50">
             </div>
 
             <div id="pie-size-wrap" class="control-group hidden">
-                <label for="pie-radius">饼/环 半径大小（%） <span id="pie-radius-value">65</span></label>
+                <label for="pie-radius">饼/环半径大小（%）<span id="pie-radius-value">65</span></label>
                 <input type="range" id="pie-radius" min="40" max="100" value="65">
             </div>
 
             <div id="area-opacity-wrap" class="control-group hidden">
-                <label for="area-opacity">面积透明度（%） <span id="area-opacity-value">35</span></label>
+                <label for="area-opacity">面积透明度（%）<span id="area-opacity-value">35</span></label>
                 <input type="range" id="area-opacity" min="0" max="100" value="35">
             </div>
 
@@ -83,12 +90,27 @@
                 <input type="range" id="hist-bins" min="3" max="30" value="10">
             </div>
 
-            <div class="control-group">
+            <div id="bubble-data-wrap" class="control-group hidden">
+                <h4>气泡图数据配置</h4>
+                <div class="info-hint">💡 提示：气泡大小仅接受正数值。负数将取绝对值。</div>
+                <label>
+                    <input type="checkbox" id="bubble-use-custom-xy">
+                    使用自定义X/Y坐标（为每个数据点单独指定X和Y值）
+                </label>
+                <div id="bubble-xy-inputs" class="hidden" style="margin-top: 10px;">
+                    <label for="bubble-x-data">X轴数据（逗号分隔，数量应与标签一致）</label>
+                    <textarea id="bubble-x-data" rows="2" placeholder="例如: 10, 20, 30, 40, 50"></textarea>
+                    <label for="bubble-y-data">Y轴数据（逗号分隔，数量应与标签一致）</label>
+                    <textarea id="bubble-y-data" rows="2" placeholder="例如: 65, 72, 58, 80, 63"></textarea>
+                </div>
+            </div>
+
+            <div class="control-group compact-gap">
                 <label for="chart-title">图表标题</label>
                 <input type="text" id="chart-title" value="我的图表">
             </div>
 
-            <div class="control-group">
+            <div class="control-group compact-gap">
                 <label>主题模式</label>
                 <div class="toggle-switch">
                     <button id="theme-light" class="active">亮色</button>
@@ -96,17 +118,22 @@
                 </div>
             </div>
 
+            <div class="control-group color-input" id="theme-background-control">
+                <label for="export-bg">背景色</label>
+                <input type="color" id="export-bg" value="#FFFFFF">
+            </div>
+
             <div class="control-group" id="axis-title-wrap">
                 <h4>轴标题</h4>
                 <label for="x-axis-title">X 轴标题</label>
-                <input type="text" id="x-axis-title" placeholder="例如：时间 / 类别">
+                <input type="text" id="x-axis-title">
                 <div class="control-group">
-                    <button id="axis-swap-btn" class="inline-btn" title="互换 X 与 Y 左">↔ 互换</button>
+                    <button id="axis-swap-btn" class="inline-btn" title="互换 X 与 Y 轴">⇅ 互换</button>
                 </div>
                 <label for="y-axis-left-title">Y 轴左标题</label>
-                <input type="text" id="y-axis-left-title" placeholder="例如：数量 / 值">
+                <input type="text" id="y-axis-left-title">
                 <label for="y-axis-right-title">Y 轴右标题（双轴时）</label>
-                <input type="text" id="y-axis-right-title" placeholder="例如：百分比 / 次数">
+                <input type="text" id="y-axis-right-title">
             </div>
 
             
@@ -129,7 +156,6 @@
                     <option value="warm">暖色 Warm</option>
                     <option value="cool">冷色 Cool</option>
                 </select>
-                <button id="apply-palette">应用配色</button>
             </div>
 
             
@@ -143,10 +169,6 @@
                 </select>
                 <label for="export-scale">分辨率倍率 <span id="export-scale-value">2</span>x</label>
                 <input type="range" id="export-scale" min="1" max="4" value="2">
-                <div class="control-group color-input">
-                    <label for="export-bg">背景色</label>
-                    <input type="color" id="export-bg" value="#FFFFFF">
-                </div>
                 <button id="export-image">导出图片</button>
             </div>
 
@@ -162,16 +184,22 @@
         <div class="divider" aria-hidden="true"></div>
         <div class="rightbar">
             <div id="data-controls">
-                <h2>数据设置</h2>
+                <div class="sidebar-header">
+                    <h2>数据设置</h2>
+                    <div class="dataset-actions">
+                        <button id="add-dataset" class="inline-btn subtle">增加</button>
+                        <button id="remove-dataset" class="inline-btn subtle">减少</button>
+                    </div>
+                </div>
                 <div id="dataset-container">
                     <!-- Datasets will be added here dynamically -->
                 </div>
-                <button id="add-dataset">增加对比量</button>
-                <button id="remove-dataset">减少对比量</button>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- TypeScript 编译后的脚本（非模块模式） -->
+    <script src="dist/script.js"></script>
 </body>
 </html>
+
