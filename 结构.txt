@@ -2,33 +2,34 @@
 ├── style.css              
 │
 ├── src/                   
-│   ├── main.ts             # 应用入口
+│   ├── main.ts             # 入口
 │   ├── app.constants.ts    # 常量定义
 │   ├── app.state.ts        # 状态管理
 │   ├── app.types.ts        # 类型定义
-│   ├── core/               # 核心功能
+│   ├── core/              
 │   │   ├── export.ts       # 图表导出
 │   │   └── state.ts        # 状态管理
 │   ├── renderers/          # 图表渲染器
 │   │   ├── chartjs.ts      # Chart.js 渲染
 │   │   └── d3.ts           # D3.js 渲染
-│   ├── ui/                 # UI 控件
+│   ├── ui/               
 │   │   ├── bindings.ts     # 数据绑定
 │   │   ├── controls.ts     # 控件逻辑
-│   │   ├── motion.ts       # 动画效果
-│   │   ├── theme.ts        # 主题切换
+│   │   ├── motion.ts       # 动画
+│   │   ├── theme.ts        # 主题
 │   │   └── visibility.ts   # 可见性控制
 │   └── utils/              # 工具函数
-│       ├── color.ts        # 颜色处理
-│       ├── data.ts         # 数据处理
+│       ├── color.ts        # 颜色
+│       ├── data.ts         # 数据
 │       ├── dom.ts          # DOM 操作
 │       └── helpers.ts      # 辅助函数
 │
-├── dist/                   # 编译输出（自动生成）
-│   ├── script.js           # 编译后的可运行脚本
+├── dist/                  
+│   ├── script.js           
 │   └── script.js.map       # Source Map（调试用）
 │
-├── tsconfig.json           # TypeScript 配置
-├── package.json            # NPM 配置
+├── tsconfig.json          
+├── package.json           
+
 
 
