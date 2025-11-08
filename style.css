@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
 #data-controls .dataset-actions #add-dataset:active {
     transform: translateY(0);
 }
@@ -13,7 +15,6 @@
 #data-controls .dataset-actions #remove-dataset {
     text-shadow: 0 1px 0 rgba(255,255,255,0.6);
 }
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 
 :root {
     /* 轻盈 SaaS 仪表盘亮色主题 */
